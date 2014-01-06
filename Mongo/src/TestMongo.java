@@ -34,10 +34,7 @@ public class TestMongo {
 		
 		testLink(testMongo);
 
-		
-
-
-		
+				
 	}
 
 	public static void testBasic(TestMongo testMongo) {
