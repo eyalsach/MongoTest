@@ -32,8 +32,50 @@ public class TestMongo {
 		testBasic(testMongo);
 		
 		testLink(testMongo);
+		
+		testBulk(testMongo);
 
 				
+	}
+
+	public static void testBulk(TestMongo testMongo) {
+		testMongo.deleteCollection(USERS_COLLECTION);
+		testMongo.createCollection(USERS_COLLECTION);
+		testMongo.deleteCollection(MANAGER_RELATIONS_COLLECTIONS);
+		testMongo.createCollection(MANAGER_RELATIONS_COLLECTIONS);
+		testMongo.createUsers(1000);
+		
+		//get users with type-x only:
+		for(int i=0;i<3;i++){
+			System.out.println("******");
+			System.out.println("Users with only type-i  will be linked to users with typei+1");
+			System.out.println("******");
+			
+			DBCollection users = testMongo.getCollection(USERS_COLLECTION);
+			DBCursor usersWithI = users.find(new BasicDBObject("type", "type-"+i));
+			DBCursor usersWithI1 = null;
+			try {
+			   while(usersWithI.hasNext()) {
+				   DBObject user1 = usersWithI.next(); 
+				   usersWithI1 = users.find(new BasicDBObject("type", "type-"+(i+1)%3));
+			       //System.out.println(user1);
+			       while(usersWithI1.hasNext()){
+			    	   DBObject user2 = usersWithI1.next(); 
+			    	   System.out.println("Linking user "+user1.get(UNIQUE_INDEX)+" with user "+user2.get(UNIQUE_INDEX));
+			    	   testMongo.addRelationships(user1, user2);
+			       }
+			
+			   }
+			} finally {
+				usersWithI.close();
+				usersWithI1.close();
+			}
+			
+		}
+		DBCollection relations = testMongo.getCollection(MANAGER_RELATIONS_COLLECTIONS);
+		System.out.println("added "+relations.getCount()+" relations");
+		
+		
 	}
 
 	public static void testBasic(TestMongo testMongo) {
@@ -62,13 +104,7 @@ public class TestMongo {
 		}
 		
 		//create users:
-		for(int i=0;i<NUM_OF_USERS;i++){
-			Map<String, Object> user = new LinkedHashMap<String, Object>();
-			user.put(UNIQUE_INDEX, "user-"+i);
-			user.put("type", "type-"+i%3);
-			user.put("index", i);
-			testMongo.insertDoc(USERS_COLLECTION, testMongo.createDoc(user));
-		}
+		testMongo.createUsers(NUM_OF_USERS);
 		
 		//test unique
 		{
@@ -140,13 +176,8 @@ public class TestMongo {
 		DBObject user1 = db.getCollection(USERS_COLLECTION).findOne(new BasicDBObject(UNIQUE_INDEX, "user-1"));
 		DBObject user2 = db.getCollection(USERS_COLLECTION).findOne(new BasicDBObject(UNIQUE_INDEX, "user-2"));
 
-		Map<String, Object> relationship = new LinkedHashMap<String, Object>();
-		relationship.put(UNIQUE_INDEX, "rel-"+user1.get(UNIQUE_INDEX)+"-"+user2.get(UNIQUE_INDEX));
-		relationship.put("from", user1.get(UNIQUE_INDEX));
-		relationship.put("to", user2.get(UNIQUE_INDEX));
-		relationship.put("Created", new Date());
-		relationship.put("index", 0);
-		testMongo.insertDoc(MANAGER_RELATIONS_COLLECTIONS, testMongo.createDoc(relationship));
+		//add relationship:
+		testMongo.addRelationships(user1, user2);
 		
 		//get the relationship 
 		{
@@ -165,7 +196,17 @@ public class TestMongo {
 			}
 			
 		}
-			//	
+			
+	}
+
+	public void addRelationships(DBObject user1, DBObject user2) {
+		Map<String, Object> relationship = new LinkedHashMap<String, Object>();
+		relationship.put(UNIQUE_INDEX, "rel-"+user1.get(UNIQUE_INDEX)+"-"+user2.get(UNIQUE_INDEX));
+		relationship.put("from", user1.get(UNIQUE_INDEX));
+		relationship.put("to", user2.get(UNIQUE_INDEX));
+		relationship.put("Created", new Date());
+		relationship.put("index", 0);
+		insertDoc(MANAGER_RELATIONS_COLLECTIONS, createDoc(relationship));
 	}
 	
 	
@@ -221,7 +262,20 @@ public class TestMongo {
 		return getDB().getCollection(colName);
 	}
 	
-	public void addCollection(String collectionName){
+	public void createUsers(int numOfUsers){
+		long start = System.currentTimeMillis();
+		for(int i=0;i<numOfUsers;i++){
+			Map<String, Object> user = new LinkedHashMap<String, Object>();
+			user.put(UNIQUE_INDEX, "user-"+i);
+			user.put("type", "type-"+i%3);
+			user.put("index", i);
+			insertDoc(USERS_COLLECTION, createDoc(user));
+		}
+		long end = System.currentTimeMillis();
+		System.out.println("It took "+(int)(end-start)+" ms to create "+numOfUsers+" users.");
+	}
+	
+	public void linkUsers(){
 		
 	}
 
