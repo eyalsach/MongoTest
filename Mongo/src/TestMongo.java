@@ -34,16 +34,19 @@ public class TestMongo {
 		testLink(testMongo);
 		
 		testBulk(testMongo);
+		
+		//another test
 
 				
 	}
 
 	public static void testBulk(TestMongo testMongo) {
+		long startCreate = System.currentTimeMillis();
 		testMongo.deleteCollection(USERS_COLLECTION);
 		testMongo.createCollection(USERS_COLLECTION);
 		testMongo.deleteCollection(MANAGER_RELATIONS_COLLECTIONS);
 		testMongo.createCollection(MANAGER_RELATIONS_COLLECTIONS);
-		testMongo.createUsers(1000);
+		testMongo.createUsers(999);
 		
 		//get users with type-x only:
 		for(int i=0;i<3;i++){
@@ -72,8 +75,19 @@ public class TestMongo {
 			}
 			
 		}
+		long endCreate = System.currentTimeMillis();
 		DBCollection relations = testMongo.getCollection(MANAGER_RELATIONS_COLLECTIONS);
-		System.out.println("added "+relations.getCount()+" relations");
+		System.out.println("added "+relations.getCount()+" relations in "+(int)(endCreate-startCreate));
+		
+		DBCursor cursor = relations.find(new BasicDBObject("to", "user-777"));
+		System.out.println("all relations where to=777:");
+		try {
+			   while(cursor.hasNext()) {
+			       System.out.println(cursor.next());
+			   }
+			} finally {
+			   cursor.close();
+			}
 		
 		
 	}
